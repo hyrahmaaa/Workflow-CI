@@ -25,43 +25,44 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python 
       uses: actions/setup-python@v5
       with:
         python-version: '3.9' 
+        conda: true 
+        cache: 'pip' 
 
-
-    - name: Initialize Conda Shell
+    - name: Create Conda Environment for MLProject
       run: |
-        conda init bash
-        source ~/.bashrc # Untuk memuat perubahan init Conda
+        # Gunakan 'conda env create' untuk membuat lingkungan dari conda.yaml
+        # Ini memastikan lingkungan sudah ada sebelum 'mlflow run' dipanggil
+        conda env create -f MLProject/conda.yaml
 
     - name: Install MLflow and DagsHub client 
       run: |
         python -m pip install --upgrade pip
-        # Instal versi spesifik untuk konsistensi dengan conda.yaml
-        pip install mlflow==3.1.0 dagshub==0.3.3 
+        pip install mlflow==3.1.0 dagshub==0.3.3 # Pastikan versi cocok dengan conda.yaml
 
     - name: Configure DagsHub MLflow Tracking
       run: |
         echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV
-        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV 
-        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV 
+        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV
+        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-        # Jalankan MLflow Project menggunakan 'conda run' untuk memastikan lingkungan diaktifkan
-        # 'mlproject-env' adalah nama lingkungan dari conda.yaml
-        conda run -n mlproject-env mlflow run MLProject/ # <--- PERUBAHAN KRUSIAL DI SINI
+        # Jalankan MLflow Project menggunakan 'conda run' di lingkungan yang sudah dibuat
+        # Nama lingkungan 'mlproject-env' diambil dari conda.yaml
+        conda run -n mlproject-env mlflow run MLProject/ # <-- Gunakan perintah ini
 
     - name: Commit processed data 
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        
-        git pull origin main --rebase # Mengambil perubahan terbaru sebelum push
-        
-        git add . # Menambahkan semua file yang berubah/baru (termasuk mlruns/)
-        
+
+        git pull origin main --rebase
+
+        git add .
+
         git commit -m "Automated: Model retraining results updated" || true
         git push
