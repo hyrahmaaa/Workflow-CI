@@ -11,14 +11,14 @@ on:
       - 'MLProject/conda.yaml'   
       - 'MLProject/MLProject'    
       - 'MLProject/telco_churn_preprocessing/**' 
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   retrain_model:
     runs-on: ubuntu-latest
 
-    permissions: 
-      contents: write 
+    permissions:
+      contents: write
       id-token: write
 
     steps:
@@ -30,31 +30,38 @@ jobs:
       with:
         python-version: '3.9' 
 
-    - name: Install MLflow and DagsHub client
+
+    - name: Initialize Conda Shell
+      run: |
+        conda init bash
+        source ~/.bashrc # Untuk memuat perubahan init Conda
+
+    - name: Install MLflow and DagsHub client 
       run: |
         python -m pip install --upgrade pip
+        # Instal versi spesifik untuk konsistensi dengan conda.yaml
         pip install mlflow==3.1.0 dagshub==0.3.3 
 
     - name: Configure DagsHub MLflow Tracking
       run: |
-        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV 
+        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV
         echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV 
         echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV 
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-    
-        mlflow run MLProject/ 
-        
-    - name: Commit processed data
+        # Jalankan MLflow Project menggunakan 'conda run' untuk memastikan lingkungan diaktifkan
+        # 'mlproject-env' adalah nama lingkungan dari conda.yaml
+        conda run -n mlproject-env mlflow run MLProject/ # <--- PERUBAHAN KRUSIAL DI SINI
+
+    - name: Commit processed data 
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         
-        git pull origin main --rebase 
+        git pull origin main --rebase # Mengambil perubahan terbaru sebelum push
         
-     
-        git add .
+        git add . # Menambahkan semua file yang berubah/baru (termasuk mlruns/)
         
         git commit -m "Automated: Model retraining results updated" || true
         git push
