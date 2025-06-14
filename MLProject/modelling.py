@@ -21,7 +21,7 @@ from sklearn.ensemble import RandomForestClassifier # Contoh model lain
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import os
 
-PROCESSED_DATA_FOLDER_NAME = '/content/drive/MyDrive/MLOps/Membangun_model/telco_churn_preprocessing'
+PROCESSED_DATA_FOLDER_NAME = 'telco_churn_preprocessing'
 PATH_TO_PROCESSED_DATA = os.path.join('.', PROCESSED_DATA_FOLDER_NAME)
 
 def load_processed_data(path):
