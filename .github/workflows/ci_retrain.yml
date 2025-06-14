@@ -39,7 +39,7 @@ jobs:
       run: |
         echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV 
         echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV 
-        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV 
+        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.dd2d0099ecbd38daf3ef262a98d8bf9956e9420a }}" >> $GITHUB_ENV 
 
     - name: Run MLflow Project (Model Retraining)
       run: |
