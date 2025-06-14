@@ -33,16 +33,28 @@ jobs:
     - name: Install MLflow and DagsHub client
       run: |
         python -m pip install --upgrade pip
-        pip install mlflow==3.1.0 dagshub==0.3.3 # <--- PASTIKAN VERSI INI SAMA DENGAN CONDA.YAML
+        pip install mlflow==3.1.0 dagshub==0.3.3 
 
     - name: Configure DagsHub MLflow Tracking
       run: |
-        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV # 
-        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV # 
-        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV # <--- GUNAKAN GITHUB SECRET
+        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV 
+        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV 
+        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV 
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-        # Jalankan MLflow Project. MLflow akan menggunakan MLProject dan conda.yaml
-        # Pastikan ini dijalankan dari root folder repo GitHub (Workflow-CI)
-        mlflow run MLProject/ # Tidak perlu -P jika modelling.py tidak punya parameter entry point
+    
+        mlflow run MLProject/ 
+        
+    - name: Commit processed data
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        git pull origin main --rebase 
+        
+     
+        git add .
+        
+        git commit -m "Automated: Model retraining results updated" || true
+        git push
