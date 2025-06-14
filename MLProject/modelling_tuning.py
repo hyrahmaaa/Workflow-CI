@@ -56,7 +56,7 @@ def load_processed_data(path):
 if __name__ == "__main__":
     print("--- Memulai Hyperparameter Tuning dan Manual Logging dengan MLflow ---")
 
-    dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME, mlflow_tracking=True) 
+    dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME) 
 
     os.environ["MLFLOW_TRACKING_URI"] = MLFLOW_TRACKING_URI
     os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
