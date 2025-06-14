@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 import mlflow
 import dagshub
+import joblib
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -22,18 +23,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import os
 
-PROCESSED_DATA_FOLDER_NAME = '/content/drive/MyDrive/MLOps/Membangun_model/telco_churn_preprocessing'
+PROCESSED_DATA_FOLDER_NAME = 'telco_churn_preprocessing'
 PATH_TO_PROCESSED_DATA = os.path.join('.', PROCESSED_DATA_FOLDER_NAME)
 
 DAGSHUB_USERNAME = "hyrahmaaa"
-DAGSHUB_REPO_NAME = "Submission-Membangun-Sistem-Machine-Learning"
+DAGSHUB_REPO_NAME = "Workflow-CI"
 
 MLFLOW_TRACKING_URI = f"https://dagshub.com/{DAGSHUB_USERNAME}/{DAGSHUB_REPO_NAME}.mlflow"
-
-os.environ["MLFLOW_TRACKING_URI"] = MLFLOW_TRACKING_URI
-
-os.environ["MLFLOW_TRACKING_PASSWORD"] = "DAGSHUB_TOKEN"
-os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
 
 def load_processed_data(path):
     """
@@ -59,6 +55,13 @@ def load_processed_data(path):
 
 if __name__ == "__main__":
     print("--- Memulai Hyperparameter Tuning dan Manual Logging dengan MLflow ---")
+
+    dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME, mlflow_tracking=True) 
+
+    os.environ["MLFLOW_TRACKING_URI"] = MLFLOW_TRACKING_URI
+    os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
+    
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = "DAGSHUB_TOKEN"
 
     # Muat data yang sudah diproses
     X_train, X_test, y_train, y_test = load_processed_data(PATH_TO_PROCESSED_DATA)
@@ -121,11 +124,16 @@ if __name__ == "__main__":
             mlflow.log_metric("best_cv_roc_auc", best_score) # Metrik dari CV
 
             # Save the model locally and then log it as an artifact
-            import joblib
-            model_path = "best_logistic_regression_model.pkl"
-            joblib.dump(best_model, model_path)
-            mlflow.log_artifact(model_path)
-            os.remove(model_path) # Clean up the local file
+            model_artifact_dir = "model" # Subfolder di artifacts
+            os.makedirs(model_artifact_dir, exist_ok=True) # Pastikan folder ada
+
+            model_path_local = os.path.join(model_artifact_dir, "best_logistic_regression_model.pkl")
+            joblib.dump(best_model, model_path_local)
+            print(f"Model saved locally to: {model_path_local}") # Log untuk debugging di Actions
+
+            # Log file model lokal tersebut sebagai artefak ke MLflow (yang akan diunggah ke DagsHub)
+            mlflow.log_artifact(model_path_local, artifact_path="model") # Upload ke subfolder 'model'
+            print(f"Model artifact logged to MLflow at artifact_path='model'") # Log untuk debugging
 
             print("\n--- Tuning Model Selesai. Hasil dicatat ke MLflow. ---")
             print(f"MLflow Run ID: {mlflow.active_run().info.run_id}")
