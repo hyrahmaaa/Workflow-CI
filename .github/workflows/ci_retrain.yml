@@ -49,9 +49,9 @@ jobs:
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-        RUN_ID=$(conda run -n mlproject-env mlflow run MLProject/ --no-conda-env --no-build-image | grep "Run ID" | awk '{print $NF}')
-        echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV 
-        echo "MLflow run initiated with ID: $RUN_ID" 
+        RUN_ID=$(conda run -n mlproject-env mlflow run MLProject/ | grep "Run ID" | awk '{print $NF}')
+        echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV
+        echo "MLflow run initiated with ID: $RUN_ID"
       env: 
         MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
         MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
