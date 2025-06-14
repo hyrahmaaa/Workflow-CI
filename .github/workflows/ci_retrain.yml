@@ -61,16 +61,20 @@ jobs:
         run: ls -R mlruns/ || echo "mlruns folder not found"
 
       - name: Upload Model Artifact to DagsHub
-        if: env.MLFLOW_RUN_ID != ''
+        if: env.MLFLOW_RUN_ID != '' # Pastikan kondisi ini tetap ada
         run: |
-          pip install dagshub==0.5.10
-
-          python -m dagshub.cli.main artifact upload \
+          # Instal dagshub di lingkungan ini lagi untuk memastikan CLI-nya tersedia
+          pip install dagshub==0.5.10 # Pastikan versi ini cocok dengan conda.yaml
+      
+          # GANTI BARIS INI (yang salah)
+          # python -m dagshub.cli.main artifact upload \
+          # Menjadi perintah CLI langsung:
+          dagshub artifact upload \ # <--- KOREKSI KRUSIAL DI SINI
             --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
             --run_id ${{ env.MLFLOW_RUN_ID }} \
             --path_on_dagshub "model" \
             --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
-            "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model"
+            "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model" # <--- LOKASI ARTEFAK LOKAL
 
       - name: Commit processed data
         run: |
