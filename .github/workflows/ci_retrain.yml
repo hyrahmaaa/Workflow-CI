@@ -25,16 +25,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Set up Conda with Environment
+      uses: conda-incubator/setup-miniconda@v2
       with:
-        python-version: '3.9' 
-        conda: true 
-        cache: 'pip'
-
-    - name: Create Conda Environment for MLProject
-      run: |
-        conda env create -f MLProject/conda.yaml
+        python-version: 3.9
+        auto-activate-base: true
+        activate-environment: mlproject-env
+        environment-file: MLProject/conda.yaml
 
     - name: Install MLflow and DagsHub client
       run: |
@@ -49,23 +46,20 @@ jobs:
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-        source ~/.bashrc
-        RUN_ID=$(conda run -n mlproject-env mlflow run MLProject/ 2>&1 | grep "Running command" | grep -oP "run with ID '\K[^']+" | tail -n 1)
+        RUN_ID=$(mlflow run MLProject/ 2>&1 | grep "Running command" | grep -oP "run with ID '\K[^']+" | tail -n 1)
         echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV
         echo "MLflow run initiated with ID: $RUN_ID"
       env: 
         MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
         MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
+
         
     # --- LANGKAH BARU UNTUK UPLOAD ARTEFAK SECARA EKSPLISIT SETELAH RUN ---
     - name: Upload Model Artifact to DagsHub
-      if: env.MLFLOW_RUN_ID != '' 
+      if: env.MLFLOW_RUN_ID != ''
       run: |
-        # Instal dagshub di lingkungan ini lagi untuk memastikan CLI-nya tersedia
-        # Ini akan memastikan versi yang benar ada di PATH untuk CLI
-        pip install dagshub==0.5.10 # <--- Pastikan versi ini cocok dengan conda.yaml
-    
+        pip install dagshub==0.5.10
         dagshub --version 
     
         python -m dagshub.cli.main artifact upload \
@@ -73,16 +67,13 @@ jobs:
           --run_id ${{ env.MLFLOW_RUN_ID }} \
           --path_on_dagshub "model" \
           --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
-          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model" # <--- LOKASI ARTEFAK LOKAL
+          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model"
 
     - name: Commit processed data
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-
         git pull origin main --rebase
-
         git add .
-
         git commit -m "Automated: Model retraining results updated" || true
-        git push
+        git push
