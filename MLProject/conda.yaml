@@ -1,0 +1,16 @@
+# Workflow-CI/MLProject/conda.yaml
+
+name: mlproject-env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9.18 
+  - pip
+  - pip:
+    - mlflow==2.10.1 
+    - pandas==2.2.2 
+    - numpy==1.26.4 
+    - scikit-learn==1.4.1 
+    - pyngrok==6.0.0 
+    - dagshub==0.3.3 
