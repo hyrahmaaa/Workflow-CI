@@ -49,7 +49,8 @@ jobs:
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-        RUN_ID=$(conda run -n mlproject-env mlflow run MLProject/ | grep "Run ID" | awk '{print $NF}')
+        source ~/.bashrc
+        RUN_ID=$(conda run -n mlproject-env mlflow run MLProject/ 2>&1 | grep "Running command" | grep -oP "run with ID '\K[^']+" | tail -n 1)
         echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV
         echo "MLflow run initiated with ID: $RUN_ID"
       env: 
