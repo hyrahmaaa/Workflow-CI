@@ -7,10 +7,10 @@ on:
     branches:
       - main 
     paths:
-      - 'MLProject/modelling.py'
-      - 'MLProject/conda.yaml'   
-      - 'MLProject/MLProject'    
-      - 'MLProject/telco_churn_preprocessing/**' 
+      - 'MLProject/modelling_tuning.py'
+      - 'MLProject/conda.yaml'
+      - 'MLProject/MLProject'
+      - 'MLProject/telco_churn_preprocessing/**'
   workflow_dispatch:
 
 jobs:
@@ -25,37 +25,52 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python 
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.9' 
         conda: true 
-        cache: 'pip' 
+        cache: 'pip'
 
     - name: Create Conda Environment for MLProject
       run: |
-        # Gunakan 'conda env create' untuk membuat lingkungan dari conda.yaml
-        # Ini memastikan lingkungan sudah ada sebelum 'mlflow run' dipanggil
         conda env create -f MLProject/conda.yaml
 
-    - name: Install MLflow and DagsHub client 
+    - name: Install MLflow and DagsHub client
       run: |
         python -m pip install --upgrade pip
-        pip install mlflow==3.1.0 dagshub==0.3.3 # Pastikan versi cocok dengan conda.yaml
+        pip install mlflow==3.1.0 dagshub==0.3.3
 
     - name: Configure DagsHub MLflow Tracking
       run: |
-        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV
-        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV
+        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV 
+        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV 
         echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-        # Jalankan MLflow Project menggunakan 'conda run' di lingkungan yang sudah dibuat
-        # Nama lingkungan 'mlproject-env' diambil dari conda.yaml
-        conda run -n mlproject-env mlflow run MLProject/ || true
+        RUN_ID=$(conda run -n mlproject-env mlflow run MLProject/ --no-conda-env --no-build-image | grep "Run ID" | awk '{print $NF}')
+        echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV 
+        echo "MLflow run initiated with ID: $RUN_ID" 
+      env: 
+        MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+        MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
+        
+    # --- LANGKAH BARU UNTUK UPLOAD ARTEFAK SECARA EKSPLISIT SETELAH RUN ---
+    - name: Upload Model Artifact to DagsHub
+      if: env.MLFLOW_RUN_ID != ''
+      run: |
+        pip install dagshub
 
-    - name: Commit processed data 
+        dagshub upload-artifact \
+          --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
+          --run_id ${{ env.MLFLOW_RUN_ID }} \
+          --path_on_dagshub "model" \
+          --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
+          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model" 
+
+    - name: Commit processed data
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
