@@ -56,22 +56,6 @@ jobs:
           MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
           MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
           MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
-
-      - name: List Artifacts Folder for Debug
-        run: ls -R mlruns/ || echo "mlruns folder not found"
-
-      - name: Upload Model Artifact to DagsHub
-        if: env.MLFLOW_RUN_ID != ''
-        run: |
-          # Instal dagshub di lingkungan ini lagi untuk memastikan CLI-nya tersedia
-          pip install dagshub==0.5.10 # Pastikan versi ini cocok dengan conda.yaml
-
-          dagshub artifact upload \
-            --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
-            --run_id ${{ env.MLFLOW_RUN_ID }} \
-            --path_on_dagshub "model" \
-            --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
-            "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model" 
             
       - name: Commit processed data
         run: |
