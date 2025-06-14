@@ -5,7 +5,7 @@ name: CI - Retrain ML Model
 on:
   push:
     branches:
-      - main 
+      - main
     paths:
       - 'MLProject/modelling_tuning.py'
       - 'MLProject/conda.yaml'
@@ -21,59 +21,62 @@ jobs:
       contents: write
       id-token: write
 
+    env:
+      DAGSHUB_REPO_NAME: Workflow-CI
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Conda with Environment
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        python-version: 3.9
-        auto-activate-base: true
-        activate-environment: mlproject-env
-        environment-file: MLProject/conda.yaml
+      - name: Set up Conda with Environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.9
+          auto-activate-base: true
+          activate-environment: mlproject-env
+          environment-file: MLProject/conda.yaml
 
-    - name: Install MLflow and DagsHub client
-      run: |
-        python -m pip install --upgrade pip
-        pip install mlflow==3.1.0 dagshub==0.5.10
+      - name: Install MLflow and DagsHub client
+        run: |
+          python -m pip install --upgrade pip
+          pip install mlflow==3.1.0 dagshub==0.5.10
 
-    - name: Configure DagsHub MLflow Tracking
-      run: |
-        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV 
-        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV 
-        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
+      - name: Configure DagsHub MLflow Tracking
+        run: |
+          echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/${{ env.DAGSHUB_REPO_NAME }}.mlflow" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
 
-    - name: Run MLflow Project (Model Retraining)
-      run: |
-        RUN_ID=$(mlflow run MLProject/ 2>&1 | grep "Running command" | grep -oP "run with ID '\K[^']+" | tail -n 1)
-        echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV
-        echo "MLflow run initiated with ID: $RUN_ID"
-      env: 
-        MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
-        MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
-        MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
+      - name: Run MLflow Project (Model Retraining)
+        run: |
+          RUN_ID=$(mlflow run MLProject/ 2>&1 | grep "Running command" | grep -oP "run with ID '\K[^']+" | tail -n 1)
+          echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "MLflow run initiated with ID: $RUN_ID"
+        env:
+          MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+          MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
 
-        
-    # --- LANGKAH BARU UNTUK UPLOAD ARTEFAK SECARA EKSPLISIT SETELAH RUN ---
-    - name: Upload Model Artifact to DagsHub
-      if: env.MLFLOW_RUN_ID != ''
-      run: |
-        pip install dagshub==0.5.10
-        dagshub --version 
-    
-        python -m dagshub.cli.main artifact upload \
-          --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
-          --run_id ${{ env.MLFLOW_RUN_ID }} \
-          --path_on_dagshub "model" \
-          --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
-          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model"
+      - name: List Artifacts Folder for Debug
+        run: ls -R mlruns/ || echo "mlruns folder not found"
 
-    - name: Commit processed data
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git pull origin main --rebase
-        git add .
-        git commit -m "Automated: Model retraining results updated" || true
-        git push
+      - name: Upload Model Artifact to DagsHub
+        if: env.MLFLOW_RUN_ID != ''
+        run: |
+          pip install dagshub==0.5.10
+          dagshub --version
+          python -m dagshub.cli.main artifact upload \
+            --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
+            --run_id ${{ env.MLFLOW_RUN_ID }} \
+            --path_on_dagshub "model" \
+            --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
+            "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model"
+
+      - name: Commit processed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin main --rebase
+          git add .
+          git commit -m "Automated: Model retraining results updated" || true
+          git push
