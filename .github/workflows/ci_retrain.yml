@@ -64,7 +64,7 @@ jobs:
         if: env.MLFLOW_RUN_ID != ''
         run: |
           pip install dagshub==0.5.10
-          dagshub --version
+
           python -m dagshub.cli.main artifact upload \
             --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
             --run_id ${{ env.MLFLOW_RUN_ID }} \
