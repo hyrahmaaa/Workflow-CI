@@ -1,0 +1,48 @@
+# Workflow-CI/.github/workflows/ci_retrain.yml
+
+name: CI - Retrain ML Model
+
+on:
+  push:
+    branches:
+      - main 
+    paths:
+      - 'MLProject/modelling.py'
+      - 'MLProject/conda.yaml'   
+      - 'MLProject/MLProject'    
+      - 'MLProject/telco_churn_preprocessing/**' 
+  workflow_dispatch: 
+
+jobs:
+  retrain_model:
+    runs-on: ubuntu-latest
+
+    permissions: 
+      contents: write 
+      id-token: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9' 
+
+    - name: Install MLflow and DagsHub client
+      run: |
+        python -m pip install --upgrade pip
+        pip install mlflow==3.1.0 dagshub==0.3.3 # <--- PASTIKAN VERSI INI SAMA DENGAN CONDA.YAML
+
+    - name: Configure DagsHub MLflow Tracking
+      run: |
+        echo "MLFLOW_TRACKING_URI=https://dagshub.com/hyrahmaaa/Workflow-CI.mlflow" >> $GITHUB_ENV # 
+        echo "MLFLOW_TRACKING_USERNAME=hyrahmaaa" >> $GITHUB_ENV # 
+        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV # <--- GUNAKAN GITHUB SECRET
+
+    - name: Run MLflow Project (Model Retraining)
+      run: |
+        # Jalankan MLflow Project. MLflow akan menggunakan MLProject dan conda.yaml
+        # Pastikan ini dijalankan dari root folder repo GitHub (Workflow-CI)
+        mlflow run MLProject/ # Tidak perlu -P jika modelling.py tidak punya parameter entry point
