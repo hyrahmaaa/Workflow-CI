@@ -60,16 +60,20 @@ jobs:
         
     # --- LANGKAH BARU UNTUK UPLOAD ARTEFAK SECARA EKSPLISIT SETELAH RUN ---
     - name: Upload Model Artifact to DagsHub
-      if: env.MLFLOW_RUN_ID != ''
+      if: env.MLFLOW_RUN_ID != '' 
       run: |
-        pip install dagshub # Pastikan dagshub terinstal di base environment untuk CLI ini
-
-        dagshub artifact upload \
+        # Instal dagshub di lingkungan ini lagi untuk memastikan CLI-nya tersedia
+        # Ini akan memastikan versi yang benar ada di PATH untuk CLI
+        pip install dagshub==0.5.10 # <--- Pastikan versi ini cocok dengan conda.yaml
+    
+        dagshub --version 
+    
+        python -m dagshub.cli.main artifact upload \
           --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
           --run_id ${{ env.MLFLOW_RUN_ID }} \
           --path_on_dagshub "model" \
           --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
-          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model"
+          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model" # <--- LOKASI ARTEFAK LOKAL
 
     - name: Commit processed data
       run: |
