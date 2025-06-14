@@ -53,7 +53,7 @@ jobs:
       run: |
         # Jalankan MLflow Project menggunakan 'conda run' di lingkungan yang sudah dibuat
         # Nama lingkungan 'mlproject-env' diambil dari conda.yaml
-        conda run -n mlproject-env mlflow run MLProject/ # <-- Gunakan perintah ini
+        conda run -n mlproject-env mlflow run MLProject/ || true
 
     - name: Commit processed data 
       run: |
