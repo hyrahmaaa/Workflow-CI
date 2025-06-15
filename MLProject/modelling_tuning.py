@@ -10,6 +10,11 @@ import mlflow.sklearn
 import dagshub
 import joblib # joblib dipertahankan jika Anda ingin menyimpan secara lokal di luar MLflow, tapi untuk log_model tidak perlu
 import os
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression # <--- PERIKSA BARIS INI DENGAN SANGAT TELITI
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+import os
 
 PROCESSED_DATA_FOLDER_NAME = 'telco_churn_preprocessing'
 # PATH_TO_PROCESSED_DATA harus relatif terhadap lokasi script ini
