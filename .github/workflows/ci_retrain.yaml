@@ -123,11 +123,21 @@ jobs:
         echo "tags=$TAGS" >> "$GITHUB_OUTPUT" # Membuat tags tersedia untuk step berikutnya
 
     - name: Build and Push Docker Image
-      uses: docker/build-and-push-action@v4
-      with:
-        context: ./MLProject # Lokasi Dockerfile dan build context
-        push: true           # Aktifkan fitur push
-        tags: ${{ steps.get_tag.outputs.tags }} # Menggunakan tags yang sudah kita buat
+      run: | # <--- UBAH 'uses' menjadi 'run'
+        # Dapatkan tags dari step sebelumnya
+        TAGS="${{ steps.get_tag.outputs.tags }}"
+        # REPO_NAME_DOCKER adalah bagian pertama dari TAGS sebelum ':' atau koma
+        REPO_NAME_DOCKER=$(echo "$TAGS" | cut -d':' -f1 | cut -d',' -f1)
+    
+        echo "Building Docker image with context ./MLProject and tags: $TAGS"
+        docker build -t "$REPO_NAME_DOCKER:latest" -t "$TAGS" ./MLProject # Gunakan build context MLProject
+    
+        echo "Pushing Docker image to Docker Hub..."
+        docker push "$REPO_NAME_DOCKER:latest"
+        docker push "$TAGS"
+    
+        echo "Docker image build and push finished."
+      if: success() && steps.get_tag.outputs.tags != ''
 
     - name: Commit processed data # Step ini untuk mengupdate Git jika ada perubahan di mlruns
       run: |
