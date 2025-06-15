@@ -1,4 +1,4 @@
-# .github/workflows/ci_retrain.yml
+# .github/workflows/ci_retrain.yaml
 
 name: CI - Retrain ML Model
 
@@ -123,7 +123,7 @@ jobs:
         echo "tags=$TAGS" >> "$GITHUB_OUTPUT" # Membuat tags tersedia untuk step berikutnya
 
     - name: Build and Push Docker Image
-      uses: docker/build-and-push-action@v5
+      uses: docker/build-and-push-action@v4
       with:
         context: ./MLProject # Lokasi Dockerfile dan build context
         push: true           # Aktifkan fitur push
