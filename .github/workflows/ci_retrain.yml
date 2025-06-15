@@ -57,22 +57,54 @@ jobs:
         echo "DAGSHUB_REPO_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV
 
     - name: Run MLflow Project (Model Retraining)
+      id: run_mlflow_project
       run: |
-        set -e 
+        set -e
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate mlproject-env
 
         mkdir -p mlruns
-        
+    
         echo "=== Executing mlflow run MLProject/ Directly ==="
-        mlflow run MLProject/  
-        
+        MLFLOW_FULL_OUTPUT=$(mlflow run MLProject/ 2>&1)
+        echo "$MLFLOW_FULL_OUTPUT"
+
+        RUN_ID=$(echo "$MLFLOW_FULL_OUTPUT" | grep -oP "run with ID '\K[^\']+" | tail -n 1)
+    
+        if [ -z "$RUN_ID" ]; then
+          echo "Error: MLflow Run ID could not be extracted. MLflow run might have failed."
+          exit 1 
+        fi
+    
+        echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV 
+        echo "MLflow run initiated with ID: $RUN_ID"
+        echo "mlflow_run_id=$RUN_ID" >> $GITHUB_OUTPUT
+    
         echo "=== mlflow run command finished ==="
       env: 
         MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
         MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
 
+    - name: Copy Model Artifact for Docker Build
+      run: |
+        # Pastikan Anda menggunakan Run ID yang ditangkap dari step sebelumnya
+        MLFLOW_RUN_ID=${{ steps.run_mlflow_project.outputs.mlflow_run_id }}
+    
+        if [ -z "$MLFLOW_RUN_ID" ]; then
+          echo "Error: MLFLOW_RUN_ID is empty. Cannot copy artifact."
+          exit 1
+        fi
+
+        ARTIFACT_SOURCE_PATH="mlruns/0/$MLFLOW_RUN_ID/artifacts/best_logistic_regression_model_artifact"
+        DESTINATION_PATH="MLProject/best_logistic_regression_model_artifact"
+
+        echo "Copying artifact from $ARTIFACT_SOURCE_PATH to $DESTINATION_PATH"
+        cp -r "$ARTIFACT_SOURCE_PATH" "$DESTINATION_PATH"
+        echo "Artifact copied successfully."
+
+      if: success() && steps.run_mlflow_project.outputs.mlflow_run_id != ''
+  
     - name: Commit processed data 
       run: |
         git config user.name "github-actions[bot]"
