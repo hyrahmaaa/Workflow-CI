@@ -1,6 +1,6 @@
 # .github/workflows/ci_retrain.yml
 
-name: CI - Retrain ML Model
+name: CI - Retrain ML Model 
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
       - 'MLProject/MLProject'
       - 'MLProject/requirements.txt'
       - 'MLProject/predict_model.py'
-      - 'MLProject/Dockerfile'
+      - 'MLProject/Dockerfile' #1
       - 'MLProject/telco_churn_preprocessing/**'
   workflow_dispatch:
 
