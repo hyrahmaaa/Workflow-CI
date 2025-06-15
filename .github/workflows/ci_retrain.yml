@@ -105,7 +105,31 @@ jobs:
         echo "Artifact copied successfully."
 
       if: success() && steps.run_mlflow_project.outputs.mlflow_run_id != ''
-  
+
+    - name: Docker Login to Docker Hub
+        uses: docker/login-action@v3 
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }} 
+          password: ${{ secrets.DOCKERHUB_TOKEN }}   
+
+    - name: Get Docker Image Tag
+        id: get_tag 
+        run: |
+          REPO_NAME_DOCKER="${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}"
+
+          MLFLOW_RUN_ID="${{ steps.run_mlflow_project.outputs.mlflow_run_id }}"
+      
+          TAGS="${REPO_NAME_DOCKER}:latest,${REPO_NAME_DOCKER}:${MLFLOW_RUN_ID}"
+          echo "Docker image tags: $TAGS"
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT 
+
+    - name: Build and Push Docker Image
+        uses: docker/build-and-push-action@v5 
+        with:
+          context: ./MLProject 
+          push: true          
+          tags: ${{ steps.get_tag.outputs.tags }} 
+        
     - name: Commit processed data 
       run: |
         git config user.name "github-actions[bot]"
