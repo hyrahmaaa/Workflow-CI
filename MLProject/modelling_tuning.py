@@ -129,7 +129,12 @@ if __name__ == "__main__":
             model_path_local_final = os.path.join(model_artifact_dir_local, "best_logistic_regression_model.pkl")
             joblib.dump(best_model, model_path_local_final)
             print(f"Model saved locally to: {model_path_local_final}") 
-            
+
+            - name: Create Artifacts Directory
+              run: |
+                mkdir -p artifacts/model
+                ls -la artifacts/
+        
             dagshub.upload_artifact(
                 repo_url=f"https://dagshub.com/{DAGSHUB_USERNAME}/{DAGSHUB_REPO_NAME}.git",
                 file_path=model_path_local_final, 
