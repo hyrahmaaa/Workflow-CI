@@ -78,9 +78,9 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
-        git pull origin main --rebase # Ambil perubahan terbaru dari remote sebelum push
+        git pull origin main --rebase 
 
-        git add . # Tambahkan semua file yang berubah/baru (termasuk mlruns/)
+        git add . 
 
-        git commit -m "Automated: Model retraining results updated" || true # Commit perubahan
-        git push # Push perubahan ke remote
+        git commit -m "Automated: Model retraining results updated" || true 
+        git push 
