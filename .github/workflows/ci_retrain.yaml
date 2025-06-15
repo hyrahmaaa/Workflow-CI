@@ -88,6 +88,26 @@ jobs:
         MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
 
+    - name: Download Model Artifact for Docker Build # Nama step diubah
+      run: |
+        set -e # Keluar segera jika ada perintah yang gagal
+        source "$(conda info --base)/etc/profile.d/conda.sh"
+        conda activate mlproject-env # Aktifkan lingkungan untuk menggunakan library mlflow
+    
+        MLFLOW_RUN_ID="${{ steps.run_mlflow_project.outputs.mlflow_run_id }}"
+    
+        if [ -z "$MLFLOW_RUN_ID" ]; then
+          echo "Error: MLFLOW_RUN_ID is empty. Cannot download artifact."
+          exit 1
+        fi
+    
+        ARTIFACT_PATH_ON_DAGSHUB="best_logistic_regression_model_artifact" # Nama artefak yang Anda log di modelling_tuning.py
+        DOWNLOAD_DESTINATION="MLProject/best_logistic_regression_model_artifact" # Folder tujuan di mana Dockerfile akan mencari
+    
+        echo "Attempting to download artifact '$ARTIFACT_PATH_ON_DAGSHUB' for run ID '$MLFLOW_RUN_ID' from DagsHub..."
+    
+        python -c "
+    
     - name: Copy Model Artifact for Docker Build
       run: |
         MLFLOW_RUN_ID=${{ steps.run_mlflow_project.outputs.mlflow_run_id }}
