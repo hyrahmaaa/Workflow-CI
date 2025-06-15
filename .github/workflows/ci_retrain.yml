@@ -57,23 +57,20 @@ jobs:
 
     - name: Run MLflow Project (Model Retraining)
       run: |
-        set -e # Ini akan membuat step gagal segera jika ada perintah yang error
+        set -e 
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate mlproject-env
         
         echo "=== Executing mlflow run MLProject/ Directly ==="
-        # Jalankan mlflow run langsung dan biarkan semua outputnya tertera di log
-        mlflow run MLProject/ --no-conda 
+        mlflow run MLProject/  
         
         echo "=== mlflow run command finished ==="
-        # Setelah ini, MLflow_RUN_ID tidak akan diset, tapi itu tidak masalah untuk debugging ini
-        # Karena kita hanya ingin melihat output utuh dari mlflow run
       env: 
         MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
         MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
 
-    - name: Debug - Find Model Files  # TAMBAHKAN DEBUGGING DI SINI
+    - name: Debug - Find Model Files  
       run: |
         echo "=== DEBUGGING AFTER MLFLOW RUN ==="
         find . -name "*.pkl" -o -name "*.joblib" 2>/dev/null || echo "No model files found"
