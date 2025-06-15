@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 
+
 def load_and_predict(input_data_df):
     """
     Memuat model MLflow yang sudah dilatih dan melakukan prediksi.
