@@ -9,7 +9,7 @@ dependencies:
   - pip
   - pip:
     - mlflow==2.13.0
-    - pandas==2.2.2
+    - pandas==1.26.0
     - numpy==1.26.0
     - scikit-learn==1.6.1
     - pyngrok==7.2.11
