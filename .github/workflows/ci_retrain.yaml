@@ -1,4 +1,4 @@
-# .github/workflows/ci_retrain.yml
+# .github/workflows/ ci_retrain.yml
 
 name: CI - Retrain ML Model
 
