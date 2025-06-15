@@ -142,6 +142,6 @@ if __name__ == "__main__":
             print("mlflow.sklearn.log_model called successfully. Model should be logged to MLflow artifacts.") # DEBUGGING
 
         print("\n--- Tuning Model Selesai. Hasil dicatat ke MLflow. ---")
-        print(f"MLflow Run ID: {mlflow.active_run().info.run_id}")
+        #print(f"MLflow Run ID: {mlflow.active_run().info.run_id}")
 
 print("\n--- Proses Tuning dan Logging Selesai. Periksa MLflow UI! ---")
