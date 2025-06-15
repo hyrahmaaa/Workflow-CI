@@ -1,4 +1,4 @@
-# Workflow-CI/MLProject/modelling.py (file ini berisi logika dari modelling_tuning.py Anda)
+# Workflow-CI/MLProject/modelling_tuning.py
 
 # -*- coding: utf-8 -*-
 """modelling_tuning.py (Adapted from modelling_tuning.ipynb for MLflow Project CI)"""
@@ -6,21 +6,20 @@
 import pandas as pd
 import numpy as np
 import mlflow
+import mlflow.sklearn
 import dagshub
-import joblib  
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+import joblib # joblib dipertahankan jika Anda ingin menyimpan secara lokal di luar MLflow, tapi untuk log_model tidak perlu
 import os
 
 PROCESSED_DATA_FOLDER_NAME = 'telco_churn_preprocessing'
-PATH_TO_PROCESSED_DATA = os.path.join('.', PROCESSED_DATA_FOLDER_NAME)
+# PATH_TO_PROCESSED_DATA harus relatif terhadap lokasi script ini
+PATH_TO_PROCESSED_DATA = os.path.join('.', PROCESSED_DATA_FOLDER_NAME) 
 
 DAGSHUB_USERNAME = "hyrahmaaa" 
 DAGSHUB_REPO_NAME = "Workflow-CI" 
 
-MLFLOW_TRACKING_URI = f"https://dagshub.com/{DAGSHUB_USERNAME}/{DAGSHUB_REPO_NAME}.mlflow"
+# MLFLOW_TRACKING_URI akan diatur oleh GitHub Actions, tidak perlu di-hardcode di sini
+# MLFLOW_TRACKING_URI = f"https://dagshub.com/{DAGSHUB_USERNAME}/{DAGSHUB_REPO_NAME}.mlflow"
 
 
 def load_processed_data(path):
@@ -28,32 +27,41 @@ def load_processed_data(path):
     Memuat data training dan testing yang sudah diproses.
     """
     print(f"Memuat data yang diproses dari: {path}")
-    if not os.path.exists(path):
-        print(f"Error: Direktori '{path}' tidak ditemukan.")
+    # Perbaiki path relatif untuk preprocessing data
+    # Karena modelling_tuning.py ada di MLProject/, dan telco_churn_preprocessing juga di MLProject/
+    # maka path harus langsung ke telco_churn_preprocessing
+    absolute_path = os.path.join(os.path.dirname(__file__), path)
+    
+    if not os.path.exists(absolute_path):
+        print(f"Error: Direktori '{absolute_path}' tidak ditemukan.")
         print("Pastikan Anda telah menjalankan langkah preprocessing dan menyimpan data di lokasi ini.")
         return None, None, None, None
 
     try:
-        X_train = pd.read_csv(os.path.join(path, 'X_train.csv'))
-        X_test = pd.read_csv(os.path.join(path, 'X_test.csv'))
-        y_train = pd.read_csv(os.path.join(path, 'y_train.csv')).squeeze()
-        y_test = pd.read_csv(os.path.join(path, 'y_test.csv')).squeeze()
+        X_train = pd.read_csv(os.path.join(absolute_path, 'X_train.csv'))
+        X_test = pd.read_csv(os.path.join(absolute_path, 'X_test.csv'))
+        y_train = pd.read_csv(os.path.join(absolute_path, 'y_train.csv')).squeeze()
+        y_test = pd.read_csv(os.path.join(absolute_path, 'y_test.csv')).squeeze()
         print("Data yang diproses berhasil dimuat.")
         return X_train, X_test, y_train, y_test
     except FileNotFoundError as e:
-        print(f"Error: File tidak ditemukan di '{path}'. Detail: {e}")
+        print(f"Error: File tidak ditemukan di '{absolute_path}'. Detail: {e}")
         print("Pastikan semua file (X_train.csv, X_test.csv, y_train.csv, y_test.csv) ada di direktori yang ditentukan.")
         return None, None, None, None
 
 if __name__ == "__main__":
-    print("--- Memulai Hyperparameter Tuning dan Manual Logging dengan MLflow ---")
+    print("--- Memulai Hyperparameter Tuning dan Logging dengan MLflow ---")
 
+    # Inisialisasi Dagshub di sini. Penting agar MLflow Tracking URI bisa diatur
+    # Hati-hati dengan mlflow_tracking=True jika pernah menyebabkan TypeError
+    # Jika MLFLOW_TRACKING_URI sudah disetel di GHA, ini mungkin hanya untuk credential
     dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME) 
 
-    os.environ["MLFLOW_TRACKING_URI"] = MLFLOW_TRACKING_URI
-    os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
-    os.environ["MLFLOW_TRACKING_PASSWORD"] = os.environ.get("MLFLOW_TRACKING_PASSWORD", "") 
-
+    # MLFLOW_TRACKING_URI, USERNAME, PASSWORD sudah disetel di GitHub Actions
+    # TIDAK perlu di-set ulang di dalam script Python ini
+    # os.environ["MLFLOW_TRACKING_URI"] = MLFLOW_TRACKING_URI
+    # os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
+    # os.environ["MLFLOW_TRACKING_PASSWORD"] = os.environ.get("MLFLOW_TRACKING_PASSWORD", "") 
 
     # Muat data yang sudah diproses
     X_train, X_test, y_train, y_test = load_processed_data(PATH_TO_PROCESSED_DATA)
@@ -105,8 +113,11 @@ if __name__ == "__main__":
         print(f"Final ROC AUC (Test Set): {final_roc_auc:.4f}")
 
 
-        # --- MANUAL LOGGING DENGAN MLFLOW ---
-        with mlflow.start_run(run_name="Tuned_Logistic_Regression_Best_Run"):
+        # --- LOGGING DENGAN MLFLOW ---
+        # MLflow akan secara otomatis menggunakan MLFLOW_TRACKING_URI dari env
+        with mlflow.start_run(run_name="Tuned_Logistic_Regression_Best_Run") as run:
+            print(f"MLflow run started with ID: {run.info.run_id}") # DEBUGGING
+
             mlflow.log_params(best_params)
             mlflow.log_param("model_type", type(best_model).__name__)
             mlflow.log_param("cv_strategy", "GridSearchCV")
@@ -119,31 +130,13 @@ if __name__ == "__main__":
             mlflow.log_metric("test_roc_auc", final_roc_auc)
             mlflow.log_metric("best_cv_roc_auc", best_score)
 
+            # Ini adalah cara standar untuk melog model dengan MLflow
+            # MLflow akan menyimpan model ini ke folder artifacts di dalam run
+            # dan mengunggahnya ke Tracking URI (DagsHub)
+            mlflow.sklearn.log_model(best_model, "best_logistic_regression_model_artifact")
+            print("mlflow.sklearn.log_model called successfully. Model should be logged to MLflow artifacts.") # DEBUGGING
 
-            mlflow_local_artifact_path_uri = mlflow.active_run().info.artifact_uri
-            mlflow_local_artifact_path = mlflow_local_artifact_path_uri.replace("file://", "")
-
-            model_artifact_dir_local = os.path.join(mlflow_local_artifact_path, "model")
-            os.makedirs(model_artifact_dir_local, exist_ok=True)
-
-            model_path_local_final = os.path.join(model_artifact_dir_local, "best_logistic_regression_model.pkl")
-            joblib.dump(best_model, model_path_local_final)
-            print(f"Model saved locally to: {model_path_local_final}") 
-
-            - name: Create Artifacts Directory
-              run: |
-                mkdir -p artifacts/model
-                ls -la artifacts/
-        
-            dagshub.upload_artifact(
-                repo_url=f"https://dagshub.com/{DAGSHUB_USERNAME}/{DAGSHUB_REPO_NAME}.git",
-                file_path=model_path_local_final, 
-                path_on_dagshub="model/best_logistic_regression_model.pkl", 
-                message=f"Model artifact from CI retraining {mlflow.active_run().info.run_id}"
-            )
-            print(f"Model artifact uploaded directly to DagsHub via dagshub.upload_artifact")
-
-            print("\n--- Tuning Model Selesai. Hasil dicatat ke MLflow. ---")
-            print(f"MLflow Run ID: {mlflow.active_run().info.run_id}")
+        print("\n--- Tuning Model Selesai. Hasil dicatat ke MLflow. ---")
+        print(f"MLflow Run ID: {mlflow.active_run().info.run_id}")
 
 print("\n--- Proses Tuning dan Logging Selesai. Periksa MLflow UI! ---")
