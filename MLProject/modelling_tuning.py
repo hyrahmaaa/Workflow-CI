@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # Inisialisasi Dagshub di sini. Penting agar MLflow Tracking URI bisa diatur
     # Hati-hati dengan mlflow_tracking=True jika pernah menyebabkan TypeError
     # Jika MLFLOW_TRACKING_URI sudah disetel di GHA, ini mungkin hanya untuk credential
-    dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME) 
+    #dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME) 
 
     # MLFLOW_TRACKING_URI, USERNAME, PASSWORD sudah disetel di GitHub Actions
     # TIDAK perlu di-set ulang di dalam script Python ini
