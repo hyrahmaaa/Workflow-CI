@@ -43,9 +43,10 @@ jobs:
         conda activate mlproject-env
         
         python -m pip install --upgrade pip
-        pip install mlflow==3.1.0 dagshub==0.5.10
+        pip install mlflow==2.13.0 dagshub==0.5.10
 
         python -c "import dagshub; print('DagsHub version:', dagshub.__version__)"
+        python -c "import mlflow; print('MLflow version:', mlflow.__version__)"
 
     - name: Configure DagsHub MLflow Tracking 
       run: |
