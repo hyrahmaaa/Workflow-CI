@@ -61,6 +61,8 @@ jobs:
         set -e 
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate mlproject-env
+
+        mkdir -p mlruns
         
         echo "=== Executing mlflow run MLProject/ Directly ==="
         mlflow run MLProject/  
