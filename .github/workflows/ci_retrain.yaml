@@ -1,4 +1,4 @@
-# .github/workflows/ci_retrain.yaml
+# .github/workflows/ci_retrain.yml
 
 name: CI - Retrain ML Model
 
@@ -93,37 +93,59 @@ jobs:
         set -e # Keluar segera jika ada perintah yang gagal
         source "$(conda info --base)/etc/profile.d/conda.sh"
         conda activate mlproject-env # Aktifkan lingkungan untuk menggunakan library mlflow
-    
+        
         MLFLOW_RUN_ID="${{ steps.run_mlflow_project.outputs.mlflow_run_id }}"
-    
+        
         if [ -z "$MLFLOW_RUN_ID" ]; then
           echo "Error: MLFLOW_RUN_ID is empty. Cannot download artifact."
           exit 1
         fi
-    
+
         ARTIFACT_PATH_ON_DAGSHUB="best_logistic_regression_model_artifact" # Nama artefak yang Anda log di modelling_tuning.py
         DOWNLOAD_DESTINATION="MLProject/best_logistic_regression_model_artifact" # Folder tujuan di mana Dockerfile akan mencari
-    
-        echo "Attempting to download artifact '$ARTIFACT_PATH_ON_DAGSHUB' for run ID '$MLFLOW_RUN_ID' from DagsHub..."
-    
-        python -c "
-    
-    - name: Copy Model Artifact for Docker Build
-      run: |
-        MLFLOW_RUN_ID=${{ steps.run_mlflow_project.outputs.mlflow_run_id }}
         
-        if [ -z "$MLFLOW_RUN_ID" ]; then
-          echo "Error: MLFLOW_RUN_ID is empty. Cannot copy artifact."
-          exit 1
-        fi
+        echo "Attempting to download artifact '$ARTIFACT_PATH_ON_DAGSHUB' for run ID '$MLFLOW_RUN_ID' from DagsHub..."
+        
+        python -c "
+import mlflow
+import os
+import shutil 
 
-        ARTIFACT_SOURCE_PATH="mlruns/0/$MLFLOW_RUN_ID/artifacts/best_logistic_regression_model_artifact"
-        DESTINATION_PATH="MLProject/best_logistic_regression_model_artifact"
+os.environ['MLFLOW_TRACKING_URI'] = os.environ.get('MLFLOW_TRACKING_URI_GHA')
+os.environ['MLFLOW_TRACKING_USERNAME'] = os.environ.get('MLFLOW_TRACKING_USERNAME_GHA')
+os.environ['MLFLOW_TRACKING_PASSWORD'] = os.environ.get('MLFLOW_TRACKING_PASSWORD_GHA')
 
-        echo "Copying artifact from $ARTIFACT_SOURCE_PATH to $DESTINATION_PATH"
-        cp -r "$ARTIFACT_SOURCE_PATH" "$DESTINATION_PATH"
-        echo "Artifact copied successfully."
-      # Pastikan step ini hanya berjalan jika step mlflow project berhasil dan ID tidak kosong
+run_id = os.environ.get('MLFLOW_RUN_ID_GHA')
+artifact_path_on_dagshub = os.environ.get('ARTIFACT_NAME_ON_DAGSHUB_GHA')
+download_destination = os.environ.get('DOWNLOAD_DESTINATION_GHA')
+
+print(f'Mencoba mengunduh artefak: run_id={run_id}, artifact_path={artifact_path_on_dagshub}, dst_path={download_destination}')
+
+if os.path.exists(download_destination):
+    print(f'Membersihkan direktori yang sudah ada: {download_destination}')
+    shutil.rmtree(download_destination)
+    
+downloaded_path = mlflow.artifacts.download_artifacts(
+    run_id=run_id,
+    artifact_path=artifact_path_on_dagshub,
+    dst_path=download_destination
+)
+print(f'Artefak berhasil diunduh ke: {downloaded_path}')
+
+if not os.path.exists(downloaded_path):
+    raise FileNotFoundError(f'Path artefak yang diunduh tidak ada: {downloaded_path}')
+if not os.path.isdir(downloaded_path):
+    raise ValueError(f'Path artefak yang diunduh bukan direktori: {downloaded_path}')
+if not os.listdir(downloaded_path):
+    raise ValueError(f'Direktori artefak yang diunduh kosong: {downloaded_path}')
+"
+      env: # Variabel lingkungan yang akan diteruskan ke script python di atas
+        MLFLOW_RUN_ID_GHA: ${{ steps.run_mlflow_project.outputs.mlflow_run_id }}
+        ARTIFACT_NAME_ON_DAGSHUB_GHA: best_logistic_regression_model_artifact
+        DOWNLOAD_DESTINATION_GHA: MLProject/best_logistic_regression_model_artifact
+        MLFLOW_TRACKING_URI_GHA: ${{ env.MLFLOW_TRACKING_URI }}
+        MLFLOW_TRACKING_USERNAME_GHA: ${{ env.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD_GHA: ${{ secrets.DAGSHUB_TOKEN }}
       if: success() && steps.run_mlflow_project.outputs.mlflow_run_id != ''
 
     - name: Docker Login to Docker Hub
@@ -143,19 +165,22 @@ jobs:
         echo "tags=$TAGS" >> "$GITHUB_OUTPUT" # Membuat tags tersedia untuk step berikutnya
 
     - name: Build and Push Docker Image
-      run: | # <--- UBAH 'uses' menjadi 'run'
-        # Dapatkan tags dari step sebelumnya
+      run: | # Menggunakan run: untuk perintah CLI docker
         TAGS="${{ steps.get_tag.outputs.tags }}"
-        # REPO_NAME_DOCKER adalah bagian pertama dari TAGS sebelum ':' atau koma
-        REPO_NAME_DOCKER=$(echo "$TAGS" | cut -d':' -f1 | cut -d',' -f1)
-    
+        REPO_NAME_DOCKER=$(echo "$TAGS" | cut -d':' -f1 | cut -d',' -f1) # Ekstrak repo name tanpa tag
+        
         echo "Building Docker image with context ./MLProject and tags: $TAGS"
-        docker build -t "$REPO_NAME_DOCKER:latest" -t "$TAGS" ./MLProject # Gunakan build context MLProject
-    
+        # Perintah docker build:
+        # -t: untuk tagging image
+        # ./MLProject: build context adalah folder MLProject
+        docker build -t "$REPO_NAME_DOCKER:latest" -t "$TAGS" ./MLProject
+        
         echo "Pushing Docker image to Docker Hub..."
+        # Perintah docker push
+        # Push kedua tags: latest dan MLFLOW_RUN_ID
         docker push "$REPO_NAME_DOCKER:latest"
-        docker push "$TAGS"
-    
+        docker push "$(echo "$TAGS" | cut -d',' -f2)" # Push tag kedua saja (MLFLOW_RUN_ID)
+        
         echo "Docker image build and push finished."
       if: success() && steps.get_tag.outputs.tags != ''
 
