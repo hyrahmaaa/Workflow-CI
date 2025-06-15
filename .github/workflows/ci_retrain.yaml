@@ -1,6 +1,6 @@
 # .github/workflows/ci_retrain.yml
 
-name: CI - Retrain ML Model 
+name: CI - Retrain ML Model
 
 on:
   push:
