@@ -2,5 +2,6 @@ mlflow==2.13.0
 pandas==2.2.2
 numpy==1.26.0
 scikit-learn==1.6.1
+joblib==1.5.1
 pyngrok==7.2.11
 dagshub===0.5.10
