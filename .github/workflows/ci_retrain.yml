@@ -57,25 +57,17 @@ jobs:
 
     - name: Run MLflow Project (Model Retraining)
       run: |
+        set -e # Ini akan membuat step gagal segera jika ada perintah yang error
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate mlproject-env
         
-        echo "Executing mlflow run MLProject/..."
-        # Jalankan mlflow run dan biarkan semua outputnya terlihat
-        # Pastikan kita menangkap run ID dengan cara yang lebih aman
-        MLFLOW_FULL_OUTPUT=$(mlflow run MLProject/ --no-conda 2>&1)
-        echo "$MLFLOW_FULL_OUTPUT" # Cetak semua output
+        echo "=== Executing mlflow run MLProject/ Directly ==="
+        # Jalankan mlflow run langsung dan biarkan semua outputnya tertera di log
+        mlflow run MLProject/ --no-conda 
         
-        # Ekstrak RUN_ID dari output penuh
-        RUN_ID=$(echo "$MLFLOW_FULL_OUTPUT" | grep -oP "run with ID '\K[^\']+" | tail -n 1)
-        
-        if [ -z "$RUN_ID" ]; then
-          echo "Error: MLflow Run ID could not be extracted. MLflow run might have failed."
-          exit 1 # Gagal jika RUN_ID tidak ditemukan
-        fi
-
-        echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV 
-        echo "MLflow run initiated with ID: $RUN_ID"
+        echo "=== mlflow run command finished ==="
+        # Setelah ini, MLflow_RUN_ID tidak akan diset, tapi itu tidak masalah untuk debugging ini
+        # Karena kita hanya ingin melihat output utuh dari mlflow run
       env: 
         MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
         MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
