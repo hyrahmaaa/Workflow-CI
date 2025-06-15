@@ -49,6 +49,9 @@ jobs:
         python -m pip install --upgrade pip
         # Instal versi spesifik untuk konsistensi
         pip install mlflow==3.1.0 dagshub==0.5.10
+        
+        # Verifikasi instalasi dagshub
+        python -c "import dagshub; print('DagsHub version:', dagshub.__version__)"
 
     - name: Configure DagsHub MLflow Tracking # Menyiapkan variabel lingkungan untuk DagsHub
       run: |
@@ -83,19 +86,70 @@ jobs:
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate mlproject-env
         
-        # Pastikan dagshub terinstal di environment ini, meskipun sudah diinstal sebelumnya.
-        # Ini untuk berjaga-jaga jika ada masalah dengan PATH atau aktivasi.
+        # Pastikan dagshub terinstal di environment ini
         pip install dagshub==0.5.10
         
-        # Gunakan dagshub CLI untuk mengupload artefak model
-        # Asumsi 'model' disimpan secara lokal di mlruns/0/<RUN_ID>/artifacts/model/
-        python -m dagshub.cli.main artifact upload \
-          --repo_url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
-          --run_id ${{ env.MLFLOW_RUN_ID }} \
-          --path_on_dagshub "model" \
+        # SOLUSI 1: Gunakan dagshub sebagai command langsung (lebih reliable)
+        dagshub artifact upload \
+          --repo-url "https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git" \
+          --run-id ${{ env.MLFLOW_RUN_ID }} \
+          --path-on-dagshub "model" \
           --message "Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}" \
-          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model" # <--- LOKASI ARTEFAK LOKAL
+          "mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model"
+          
+        # JIKA SOLUSI 1 GAGAL, uncomment solusi 2 di bawah dan comment solusi 1
+        # SOLUSI 2: Gunakan Python script untuk upload
+        # python -c "
+        # import dagshub
+        # dagshub.upload_files(
+        #     repo_url='https://dagshub.com/${{ env.MLFLOW_TRACKING_USERNAME }}/${{ env.DAGSHUB_REPO_NAME }}.git',
+        #     local_path='mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model',
+        #     remote_path='artifacts/model',
+        #     commit_message='Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}'
+        # )"
+        
       env: # Pastikan variabel DagsHub juga tersedia di step ini
+        MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+        MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
+
+    - name: Upload Model Artifact to DagsHub (Alternative Method) # Metode alternatif jika yang pertama gagal
+      # Hanya jalankan ini jika step sebelumnya gagal
+      if: failure() && env.MLFLOW_RUN_ID != ''
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate mlproject-env
+        
+        # Gunakan Python script sebagai fallback
+        python << 'EOF'
+        import os
+        import dagshub
+        
+        # Setup credentials
+        os.environ['DAGSHUB_USER_TOKEN'] = '${{ env.MLFLOW_TRACKING_PASSWORD }}'
+        
+        try:
+            # Initialize DagsHub repo
+            dagshub.init(
+                repo_owner='${{ env.MLFLOW_TRACKING_USERNAME }}',
+                repo_name='${{ env.DAGSHUB_REPO_NAME }}',
+                mlflow=True
+            )
+            
+            # Upload using Python API
+            dagshub.upload_files(
+                local_path='mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model',
+                remote_path='artifacts/model',
+                commit_message='Model artifact from CI retraining ${{ env.MLFLOW_RUN_ID }}'
+            )
+            print("Model artifact uploaded successfully!")
+            
+        except Exception as e:
+            print(f"Upload failed: {e}")
+            # Fallback: just log the model location
+            print(f"Model saved locally at: mlruns/0/${{ env.MLFLOW_RUN_ID }}/artifacts/model")
+        EOF
+      env:
         MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
         MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
