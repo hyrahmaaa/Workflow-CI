@@ -55,13 +55,25 @@ jobs:
  
         echo "DAGSHUB_REPO_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV
 
-    - name: Run MLflow Project (Model Retraining) 
+    - name: Run MLflow Project (Model Retraining)
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate mlproject-env
         
-        RUN_ID=$(mlflow run MLProject/ 2>&1 | grep "Running command" | grep -oP "run with ID '\K[^\']+" | tail -n 1)
+        echo "Executing mlflow run MLProject/..."
+        # Jalankan mlflow run dan biarkan semua outputnya terlihat
+        # Pastikan kita menangkap run ID dengan cara yang lebih aman
+        MLFLOW_FULL_OUTPUT=$(mlflow run MLProject/ --no-conda 2>&1)
+        echo "$MLFLOW_FULL_OUTPUT" # Cetak semua output
         
+        # Ekstrak RUN_ID dari output penuh
+        RUN_ID=$(echo "$MLFLOW_FULL_OUTPUT" | grep -oP "run with ID '\K[^\']+" | tail -n 1)
+        
+        if [ -z "$RUN_ID" ]; then
+          echo "Error: MLflow Run ID could not be extracted. MLflow run might have failed."
+          exit 1 # Gagal jika RUN_ID tidak ditemukan
+        fi
+
         echo "MLFLOW_RUN_ID=$RUN_ID" >> $GITHUB_ENV 
         echo "MLflow run initiated with ID: $RUN_ID"
       env: 
