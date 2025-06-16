@@ -1,7 +1,4 @@
-# Workflow-CI/MLProject/modelling_tuning.py
-
-# -*- coding: utf-8 -*-
-"""modelling_tuning.py (Adapted from modelling_tuning.ipynb for MLflow Project CI)"""
+# MLProject/modelling_tuning.py
 
 import pandas as pd
 import numpy as np
@@ -16,18 +13,26 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import os
 
+# Import kelas ChurnPredictor dari inference.py
+# Kita asumsikan inference.py ada di direktori yang sama dengan modelling_tuning.py
+# Pastikan inference.py sudah bersih seperti yang terakhir kita diskusikan (bagian __main__ dikomentari)
+from inference import ChurnPredictor 
+
 PROCESSED_DATA_FOLDER_NAME = 'telco_churn_preprocessing'
 PATH_TO_PROCESSED_DATA = os.path.join('.', PROCESSED_DATA_FOLDER_NAME) 
 
 DAGSHUB_USERNAME = "hyrahmaaa" 
-DAGSHUB_REPO_NAME = "Workflow-CI" 
+DAGSHUB_REPO_NAME = "CI-Workflow" 
 
 def load_processed_data(path):
     """
     Memuat data training dan testing yang sudah diproses.
     """
     print(f"Memuat data yang diproses dari: {path}")
-    absolute_path = os.path.join(os.path.dirname(__file__), path)
+    # Perbaiki path absolut agar berfungsi di CI/CD dan lokal
+    # Menggunakan os.path.abspath untuk mendapatkan path saat ini
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    absolute_path = os.path.join(base_dir, path)
     
     if not os.path.exists(absolute_path):
         print(f"Error: Direktori '{absolute_path}' tidak ditemukan.")
@@ -81,7 +86,7 @@ if __name__ == "__main__":
         final_accuracy = accuracy_score(y_test, y_pred)
         final_precision = precision_score(y_test, y_pred)
         final_recall = recall_score(y_test, y_pred)
-        final_f1 = f1_score(y_test, y_pred)
+        final_f1 = f1_score(y_test, final_recall, final_precision) # Perbaiki ini
         final_roc_auc = roc_auc_score(y_test, y_pred_proba)
 
         print(f"Final Accuracy (Test Set): {final_accuracy:.4f}")
@@ -89,7 +94,6 @@ if __name__ == "__main__":
         print(f"Final Recall (Test Set): {final_recall:.4f}")
         print(f"Final F1-Score (Test Set): {final_f1:.4f}")
         print(f"Final ROC AUC (Test Set): {final_roc_auc:.4f}")
-
 
         with mlflow.start_run(run_name="Tuned_Logistic_Regression_Best_Run") as run:
             print(f"MLflow run started with ID: {run.info.run_id}") 
@@ -106,8 +110,18 @@ if __name__ == "__main__":
             mlflow.log_metric("test_roc_auc", final_roc_auc)
             mlflow.log_metric("best_cv_roc_auc", best_score)
 
-            mlflow.sklearn.log_model(best_model, "best_logistic_regression_model_artifact")
-            print("mlflow.sklearn.log_model called successfully. Model should be logged to MLflow artifacts.") # DEBUGGING
+            # --- Perubahan Kritis di Sini ---
+            # Mengemas model dengan custom PythonModel (ChurnPredictor dari inference.py)
+            # dan menyertakan model terlatih sebagai artefak
+            mlflow.pyfunc.log_model(
+                artifact_path="best_logistic_regression_model_artifact",
+                python_model=ChurnPredictor(),
+                artifacts={"model_path": best_model}, # Menyertakan model terlatih sebagai artefak yang akan diakses ChurnPredictor
+                # Menambahkan signature untuk input dan output model
+                input_example=X_train.head(1), 
+                signature=mlflow.models.signature.infer_signature(X_train, y_pred)
+            )
+            print("mlflow.pyfunc.log_model called successfully with custom PythonModel. Model should be logged to MLflow artifacts.") # DEBUGGING
 
         print("\n--- Tuning Model Selesai. Hasil dicatat ke MLflow. ---")
 
