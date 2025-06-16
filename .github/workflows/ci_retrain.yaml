@@ -64,8 +64,12 @@ jobs:
         set -e
         source "$(conda info --base)/etc/profile.d/conda.sh"
         conda activate mlproject-env
-
-        # mkdir -p mlruns # MLflow seharusnya membuat ini sendiri sekarang, ini bisa dihapus
+        
+        # --- DEBUGGING: Periksa import/syntax awal ---
+        echo "=== Testing MLProject/modelling_tuning.py for basic import/syntax issues ==="
+        python -c "import MLProject.modelling_tuning" || { echo "Error: Basic import/syntax check failed. See traceback above."; exit 1; }
+        echo "=== Basic import/syntax check passed. Proceeding with mlflow run ==="
+        # --- AKHIR DEBUGGING ---
         
         echo "=== Executing mlflow run MLProject/ Directly ==="
         MLFLOW_FULL_OUTPUT=$(mlflow run MLProject/ 2>&1)
